@@ -1,9 +1,9 @@
 import overpy
 import json
 
-def overpass_load_points(iso_a2, tag_key='amenity', tag_value='cafe'):
+def overpass_load_points(iso_a2, tag_key, tag_value):
     """Load points from OSM with overpy"""
-
+    print({0},{1},{2})
     api = overpy.Overpass()
     r = api.query("""
         ( area["ISO3166-1"="{0}"][admin_level=2]; )->.searchArea;
@@ -103,5 +103,3 @@ if __name__ == '__main__':
 
     filepath = 'points_{}_{}_{}.geojson'.format(iso_a2, tag_key, tag_value)
     save_points(filepath, coords, names)
-
-
