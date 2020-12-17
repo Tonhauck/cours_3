@@ -9,6 +9,7 @@ points = gpd.read_file('../data/points_FR_amenity_bar_pub.geojson')
 
 xmin,ymin,xmax,ymax =  points.total_bounds
 #TAILLE DES CELLULES (en degrés décimaux)
+#MODIFIABLE
 width = 0.1
 height = 0.1
 
@@ -49,9 +50,8 @@ dfsjoin["id"] = dfsjoin.index + 1
 # On fusionne les cellules par id et nous comptons le nombre de cellules fusionnées, ce qui nous donne le nombre de points dans la cellule. 
 dataFinal = dfsjoin.dissolve(by='id',aggfunc='count')
 #on ajoute une variable hauteur, basé sur le champ count (ce qui servira pour l'extrusion des polygones sur la carte)
-
 dataFinal['height'] = dataFinal['name']*coef_exageration
-#Renommage du champ name en value
+#Renommage du champ name en value. Le champ name contient le compte des points par cellule. Nous le renommons.
 dataFinal = dataFinal.rename(columns={'name': 'value'})
 #A MODIFIER
 dataFinal.to_file("output_bar_pub.geojson", driver="GeoJSON")
