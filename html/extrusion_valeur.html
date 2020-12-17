@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Extrusion de polygones</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="../lib/geostats.js"></script>
+
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+    /*STYLE */
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+    }
+
+    #legend {
+        padding: 10px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        line-height: 18px;
+        height: auto;
+        margin-bottom: 40px;
+        width: auto;
+    }
+
+    .legend-key {
+        display: inline-block;
+        border-radius: 20%;
+        width: 10px;
+        height: 10px;
+        margin-right: 5px;
+    }
+
+    .map-overlay {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.8);
+        margin-right: 20px;
+        font-family: Arial, sans-serif;
+        overflow: auto;
+        border-radius: 3px;
+    }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div><br>
+    <div class="map-overlay" id="legend"><b>Nombre de bars/pubs par cellule : </b><br></div>
+    <script>
+
+
+    //CONTENEUR DE CARTE
+    /*Voici votre clé d'identification pour avoir accès aux services mapbox*/
+    mapboxgl.accessToken = 'pk.eyJ1IjoieW5veSIsImEiOiJja2lpeDdsZ3gwbWJyMnNtbHNhYWx3dmxqIn0.zuV0g2z-IY_SS6B9QJnRQg';
+    /*On crée ici la carte*/
+    var map = new mapboxgl.Map({
+        container: 'map',
+        /*on défini le zoom de départ sur la carte*/
+        zoom: 6.1,
+        /*on défini le point sur lequel on affichera la carte*/
+        center: [1.7191, 46.7111],
+        /*Inclinaison de la caméra*/
+        pitch: 60,
+        /*Direction à laquelle vous faites face : nord = 0°, est  90°, sud = 180°, and ouest = 270°*/
+        bearing: 50,
+
+        /*Selection du style de la carte. Enormément de styles possibles : https://www.mapbox.com/gallery/ */
+        /*Possibilité de créer ces propres styles avec Mapbox Studio, mais nous le verrons pas aujourd'hui*/
+        style: 'mapbox://styles/mapbox/streets-v11'
+    });
+
+
+    /*FIN DE LA DECLARATION DU CONTENEUR*/
+
+
+
+
+    /*Tableau qui contiendra les classes et les couleurs de la discrétisation choisie*/
+    DISCRETISATION = []
+
+    /*Au chargement de la carte = traitement statistique + ajout des couches cartographiques*/
+    map.on('load', function() {
+        //ON OUVRE LE GEOJSON AVEC D3
+        d3.json("./data/output_bar_pub.geojson", function(data) {
+            /*cette variable contiendra un tableau contenant l'ensemble des valeurs pour chaque cellule*/
+            valeur_pour_discretisation = []
+
+            /*Déclaration des lignes du geojson dans une variable data*/
+            data = data.features
+
+            /*On boucle pour ajouter les valeurs de chaque cellule dans le tableau valeur_pour_discretisation*/
+            for (var i = 0; i < data.length; i++) {
+                /*On recherche dans chaque ligne du geojson la valeur et on l'ajoute dans le tableau*/
+                valeur_pour_discretisation.push(data[i].properties.value)
+            }
+
+
+
+
+
+
+            /* METHODE DE DISCRETISATION
+            ###### A MODIFIER ####
+            DECOMMENTER LA DISCRETISATION ET COMMENTER LES AUTRES*/
+
+            /*            Intervalles_Egaux = new geostats(valeur_pour_discretisation);
+                        Intervalles_Egaux = Intervalles_Egaux.getEqInterval(5);*/
+
+            /*          Quantile = new geostats(valeur_pour_discretisation);
+            Quantile = Quantile.getClassQuantile(5);*/
+
+            Jenks = new geostats(valeur_pour_discretisation);
+            Jenks = Jenks.getClassJenks2(5);
+
+
+
+            //Ã MODIFIER : selon le mode de discrétisation choisi
+            methode_de_discretisation = Jenks
+            /*On supprime la première valeur des classes de discrétisation car c'est la valeur plancher de notre distribution, elle n'est pas utile*/
+            methode_de_discretisation.shift();
+            /*LIST DE COULEURS
+            ###### A MODIFIER : Choisir un dégradé de couleurs  ####
+            Si vous ajoutez des classes, pensez à ajouter des couleurs !*/
+            colorUnivarie = ['#F2E394', '#F2C53D', '#F2A516', '#BF6B04', '#592B02']
+
+            /*Boucle for : on ajoute dans la variable DISCRETISATION les valeurs qui définiront les classes et les couleurs qui seront associées à chacune des classes*/
+            for (var i = 0; i < colorUnivarie.length; i++) {
+                DISCRETISATION.push([methode_de_discretisation[i], colorUnivarie[i]])
+            }
+   
+
+            /* FIN DE LA PARTIE DISCRETISATION*/
+
+
+
+
+
+
+            /* DEBUT DE LA PARTIE AJOUT DES COUCHES CARTOGRAPHIQUES*/
+            map.addSource('france_Source', {
+                // GeoJSON Data source qui sera affiché sur la carte
+                'type': 'geojson',
+                /*A MODIFIER : appelez votre fichier*/
+                'data': './data/output_bar_pub.geojson'
+            });
+            map.addLayer({
+                'id': 'france',
+                'type': 'fill-extrusion',
+                'source': 'france_Source',
+                'paint': {
+                    // fill-extrusion-color = la couleur associée aux polygones en fonction de la discrétisation choisie
+                    'fill-extrusion-color': {
+                        // on appelle ici le champ contenant la valeur à afficher pour chque cellule
+                        property: 'value',
+                        /*On appelle ici notre discrétisation et les couleurs associées*/
+                        stops: DISCRETISATION
+                    },
+
+                    // Appelle des valeurs exagérées pour donner le volume à nos polygones (la hauteur)
+                    'fill-extrusion-height': ['get', 'height'],
+
+                    // fill-extrusion-base = la base du polygone à 0 mètre de hauteur
+                    'fill-extrusion-base': 0,
+
+                    // Opacité du polygone
+                    /*MODIFIABLE*/
+                    'fill-extrusion-opacity': 0.6
+                }
+            });
+            /* FIN DE LA PARTIE AJOUT DES COUCHES CARTOGRAPHIQUES*/
+
+
+
+
+
+
+
+
+            /*LEGENDE*/
+            /*On boucle pour ajouter dans la div légende les valeurs des classes de notre discrétisation et les couleurs*/
+            for (i = 0; i < colorUnivarie.length; i++) {
+                if (i == 0) {
+                    /*Pour la première classe, une exception, nous prenons la valeur minimum de notre distribution et la première valeur du tableau des classes*/
+                    var layer = (d3.min(valeur_pour_discretisation)).toFixed(2) + ' - ' + (methode_de_discretisation[i]).toFixed(2);
+                } else {
+                    var layer = (methode_de_discretisation[i - 1]).toFixed(2) + ' - ' + (methode_de_discretisation[i]).toFixed(2);
+                }
+                var color = colorUnivarie[i];
+                var item = document.createElement('div');
+                var key = document.createElement('span');
+                key.className = 'legend-key';
+                key.style.backgroundColor = color;
+                var value = document.createElement('span');
+                value.innerHTML = layer;
+                item.appendChild(key);
+                item.appendChild(value);
+                legend.appendChild(item);
+            }
+            /* FIN DE LA PARTIE LEGENDE*/
+        })
+        /* FIN DE D3.JSON*/
+
+    });
+    /* FIN DE MAP.ON('LOAD')*/
+    </script>
+</body>
+
+</html>

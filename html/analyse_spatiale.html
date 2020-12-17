@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Extrusion de polygones</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="../lib/geostats.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Helvetica Neue', Helvetica, Arial, Sans-serif;
+    }
+
+    h1 {
+        font-size: 20px;
+        line-height: 30px;
+    }
+
+    h2 {
+        font-size: 14px;
+        line-height: 20px;
+        margin-bottom: 10px;
+    }
+
+    #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+    }
+
+    #legend {
+        padding: 10px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        line-height: 18px;
+        height: 100px;
+        margin-bottom: 40px;
+        width: auto;
+    }
+
+    .legend-key {
+        display: inline-block;
+        border-radius: 20%;
+        width: 10px;
+        height: 10px;
+        margin-right: 5px;
+    }
+
+    .map-overlay {
+        position: absolute !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        background: rgba(255, 255, 255, 0.8) !important;
+        margin-right: 20px !important;
+        font-family: Arial, sans-serif !important;
+        overflow: auto !important;
+        border-radius: 3px !important;
+    }
+
+    #console {
+        position: absolute;
+        margin: 10px;
+        width: auto;
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.8) !important;
+        overflow: auto !important;
+    }
+
+    .cle {
+        font-size: 12px;
+    }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div class="map-overlay" id="legend"><b>Ratio : </b><br><br></div>
+    <div id="console">
+        <h1>Analyse spatiale et statistique des bars/pubs et des boulangeries</h1>
+        <div class="cle">
+            <i>Clé de lecture :
+                <br>
+                <b>Le ratio est compris entre 0 et +.</b> Si le ratio de la cellule est inférieur à 1 alors on y trouve + de bars que de boulangeries, et inversement.
+                <br>
+                <b>La couleur = l'importance du ratio boulangerie/bar </b>, exemple : à Toulouse, nous dénombrons 4.8 boulangeries pour 1 bar/pub
+                <br>
+                <b>La taille des barres = le nombre d'entités </b>. Si le ratio est inférieur à 1, la barre indiquera le nombre de bars. Si le ratio est supérieur à 1, la barre sera associée aux boulangeries.
+            </i></div>
+    </div>
+    <script>
+    //CONTENEUR DE CARTE
+    /*Voici votre clé d'identification pour avoir accès aux services mapbox*/
+    /*L'accès à une clé nécessite une inscription sur mapbox.com au préalable (inscription gratuite)*/
+    mapboxgl.accessToken = 'pk.eyJ1IjoieW5veSIsImEiOiJja2lpeDdsZ3gwbWJyMnNtbHNhYWx3dmxqIn0.zuV0g2z-IY_SS6B9QJnRQg';
+    /*On crée ici la carte*/
+    var map = new mapboxgl.Map({
+        container: 'map',
+        /*on défini le zoom de départ sur la carte*/
+        zoom: 6.1,
+        /*on défini le point sur lequel on affichera la carte*/
+        center: [1.7191, 46.7111],
+        /*Inclinaison de la caméra*/
+        pitch: 60,
+        /*Direction à laquelle vous faites face : nord = 0°, est  90°, sud = 180°, and ouest = 270°*/
+        bearing: 50,
+
+        /*Selection du style de la carte. Enormément de styles possibles : https://www.mapbox.com/gallery/ */
+        /*Possibilité de créer ces propres styles avec Mapbox Studio, mais nous le verrons pas aujourd'hui*/
+        style: 'mapbox://styles/mapbox/streets-v11'
+    });
+    /*FIN DE LA DECLARATION DU CONTENEUR*/
+
+
+
+
+    /*Tableau qui contiendra les classes et les couleurs de la discrétisation choisie*/
+    DISCRETISATION = []
+
+
+    /*Au chargement de la carte = traitement statistique + ajout des couches cartographiques*/
+    map.on('load', function() {
+        //ON OUVRE LE GEOJSON AVEC D3
+        d3.json("./data/bar_bakery.geojson", function(data) {
+            /*cette variable contiendra un tableau contenant l'ensemble des valeurs pour chaque cellule*/
+            valeur_pour_discretisation = []
+
+            /*Déclaration des lignes du geojson dans une variable data*/
+            data = data.features
+
+            /*On boucle pour ajouter les valeurs de chaque cellule dans le tableau valeur_pour_discretisation*/
+            for (var i = 0; i < data.length; i++) {
+                /*On recherche dans chaque ligne du geojson la valeur et on l'ajoute dans le tableau*/
+                valeur_pour_discretisation.push(data[i].properties.ratio)
+            }
+
+            /* METHODE DE DISCRETISATION
+            ###### A MODIFIER ####
+            DECOMMENTER LA DISCRETISATION ET COMMENTER LES AUTRES*/
+
+            /*            Intervalles_Egaux = new geostats(valeur_pour_discretisation);
+                        Intervalles_Egaux = Intervalles_Egaux.getEqInterval(5);*/
+
+            /*          Quantile = new geostats(valeur_pour_discretisation);
+            Quantile = Quantile.getClassQuantile(5);*/
+
+            /*            Jenks = new geostats(valeur_pour_discretisation);
+                        Jenks = Jenks.getClassJenks2(5);*/
+
+
+            Seuils_Observes = [0, 0.1, 0.5, 1, 1.5, d3.max(valeur_pour_discretisation)]
+
+            //Ã MODIFIER : selon le mode de discrétisation choisi
+            methode_de_discretisation = Seuils_Observes
+            /*On supprime la première valeur des classes de discrétisation car c'est la valeur plancher de notre distribution, elle n'est pas utile*/
+            methode_de_discretisation.shift();
+            /*LIST DE COULEURS
+            ###### A MODIFIER : Choisir un dégradé de couleurs  ####
+            Si vous ajoutez des classes, pensez à ajouter des couleurs !*/
+            colorBivarie = ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51']
+
+            /*Boucle for : on ajoute dans la variable DISCRETISATION les valeurs qui définiront les classes et les couleurs qui seront associées à chacune des classes*/
+            for (var i = 0; i < colorBivarie.length; i++) {
+                DISCRETISATION.push([methode_de_discretisation[i], colorBivarie[i]])
+            }
+
+
+            /* FIN DE LA PARTIE DISCRETISATION*/
+
+
+            /* DEBUT DE LA PARTIE AJOUT DES COUCHES CARTOGRAPHIQUES*/
+            map.addSource('france_Source', {
+                // GeoJSON Data source qui sera affiché sur la carte
+                'type': 'geojson',
+                /*A MODIFIER : appelez votre fichier*/
+                'data': './data/bar_bakery.geojson'
+            });
+            map.addLayer({
+                'id': 'france',
+                'type': 'fill-extrusion',
+                'source': 'france_Source',
+                'paint': {
+                    // fill-extrusion-color = la couleur associée aux polygones en fonction de la discrétisation choisie
+                    'fill-extrusion-color': {
+                        // on appelle ici le champ contenant la valeur à afficher pour chque cellule
+                        property: 'ratio',
+                        /*On appelle ici notre discrétisation et les couleurs associées*/
+                        stops: DISCRETISATION
+                    },
+
+                    // Appelle des valeurs exagérées pour donner le volume à nos polygones (la hauteur)
+                    // Mapbox utilise des expressions, voir la doc pour plus d'infos : https://docs.mapbox.com/mapbox-gl-js/style-spec/expressions/#case 
+                    'fill-extrusion-height': ["case",
+                        [">", ["get", "ratio"], 1],
+                        ['get', 'height_left'],
+                        ['get', 'height_right']
+
+                    ],
+
+                    // Get fill-extrusion-base from the source 'base_height' property.
+                    'fill-extrusion-base': 0,
+
+                    // Make extrusions slightly opaque for see through indoor walls.
+                    'fill-extrusion-opacity': 0.7
+                }
+            });
+
+            /*LEGENDE*/
+            /*On boucle pour ajouter dans la div légende les valeurs des classes de notre discrétisation et les couleurs*/
+            for (i = 0; i < colorBivarie.length; i++) {
+                if (i == 0) {
+                    /*Pour la première classe, une exception, nous prenons la valeur minimum de notre distribution et la première valeur du tableau des classes*/
+                    var layer = (d3.min(valeur_pour_discretisation)).toFixed(2) + ' - ' + (methode_de_discretisation[i]).toFixed(2);
+                } else {
+                    var layer = (methode_de_discretisation[i - 1]).toFixed(2) + ' - ' + (methode_de_discretisation[i]).toFixed(2);
+                }
+                var color = colorBivarie[i];
+                var item = document.createElement('div');
+                var key = document.createElement('span');
+                key.className = 'legend-key';
+                key.style.backgroundColor = color;
+                var value = document.createElement('span');
+                value.innerHTML = layer;
+                item.appendChild(key);
+                item.appendChild(value);
+                legend.appendChild(item);
+            }
+            /* FIN DE LA PARTIE LEGENDE*/
+        })
+        /* FIN DE D3.JSON*/
+
+    });
+    /* FIN DE MAP.ON('LOAD')*/
+    </script>
+</body>
+
+</html>
